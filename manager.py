@@ -16,6 +16,7 @@ class Manager(ControlSurface):
         self.log_level = "info"
 
         self.handlers = []
+        self.tick_count = 0
 
         self.osc_server = abletonosc.OSCServer()
         self.schedule_message(0, self.tick)
@@ -104,6 +105,12 @@ class Manager(ControlSurface):
         """
         logger.debug("Tick...")
         self.osc_server.process()
+
+        # Send a tick message once per 500ms, to keep the connection alive
+        if self.tick_count % 5 == 0:
+            song = self.handlers[0].song
+            self.osc_server.send("/live/song/stats", (song.song_length,song.tempo,song.current_song_time,song.is_playing,))
+
         self.schedule_message(1, self.tick)
 
     def reload_imports(self):
@@ -129,6 +136,7 @@ class Manager(ControlSurface):
     def disconnect(self):
         self.show_message("Disconnecting...")
         logger.info("Disconnecting...")
+        self.osc_server.send("/live/disconnecting")
         self.stop_logging()
         self.osc_server.shutdown()
         super().disconnect()
